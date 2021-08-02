@@ -108,7 +108,6 @@ celerybeat.pid
 # Environments
 .env
 .venv
-.idea
 env/
 venv/
 ENV/
@@ -132,3 +131,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/.pycharm_helpers/
+.idea
