@@ -2,8 +2,9 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import permissions
-from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 from accounts.api.serializers import UserSerializer, LoginSerializer, SignupSerializer
 from django.contrib.auth import (
     authenticate as django_authenticate,
@@ -18,9 +19,10 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = (permissions.IsAuthenticated,)
 
 class AccountViewSet(viewsets.ViewSet):
+    permission_classes = (AllowAny,)
     serializer_class = SignupSerializer
 
     @action(methods=['GET'], detail=False)
