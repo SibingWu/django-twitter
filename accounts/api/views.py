@@ -94,6 +94,11 @@ class AccountViewSet(viewsets.ViewSet):
     def signup(self, request):
         """
         使用 username, email, password 进行注册
+
+        测试数据：
+        username: lisawu
+        email: lisa@twitter.com
+        password: lisawu
         """
         serializer = SignupSerializer(data=request.data)
         if not serializer.is_valid():
