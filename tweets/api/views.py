@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from newsfeeds.services import NewsFeedService
 from tweets.api.serializers import TweetSerializerForCreate, TweetSerializer
 from tweets.models import Tweet
 
@@ -56,6 +57,10 @@ class TweetViewSet(viewsets.GenericViewSet,
 
         # save() will trigger create() method in TweetSerializerForCreate
         tweet = serializer.save()  # 存入数据库
+
+        # news feed流进行fan out
+        NewsFeedService.fanout_to_followers(tweet)
+
         return Response(
             TweetSerializer(instance=tweet).data,  # 使用展示的serializer
             status=status.HTTP_201_CREATED
