@@ -4,7 +4,7 @@ from tweets.models import Tweet
 
 
 class TweetSerializer(serializers.ModelSerializer):
-    user = UserSerializerForTweet()
+    user = UserSerializerForTweet()  # 会返回具体user被serialize过的信息，若不指定只会返回user_id
 
     class Meta:
         model = Tweet

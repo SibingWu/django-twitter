@@ -99,6 +99,8 @@ class AccountViewSet(viewsets.ViewSet):
         username: lisawu
         email: lisa@twitter.com
         password: lisawu
+
+        创建测试数据时，密码与用户名一致
         """
         serializer = SignupSerializer(data=request.data)
         if not serializer.is_valid():
