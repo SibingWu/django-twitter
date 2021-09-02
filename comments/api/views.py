@@ -19,6 +19,7 @@ class CommentViewSet(viewsets.GenericViewSet):
     """
     serializer_class = CommentSerializerForCreate
     queryset = Comment.objects.all()
+    filterset_fields = ('tweet_id',)  # 用 filterset_fields去filter queryset
 
     def get_permissions(self):
         # 注意要加用 AllowAny() / IsAuthenticated() 实例化出对象
@@ -28,6 +29,32 @@ class CommentViewSet(viewsets.GenericViewSet):
         if self.action in ['destroy', 'update']:
             return [IsAuthenticated(), IsObjectOwner()]
         return [AllowAny()]
+
+    def list(self, request: Request):
+        """
+        重载 list 方法，不列出所有 comments，
+        必须要求指定 tweet_id 作为筛选条件，列出某 tweet 下的所有 comments
+        GET /api/comments/?tweet_id=xxx
+        """
+        if 'tweet_id' not in request.query_params:
+            return Response({
+                'message': 'missing tweet_id in request',
+                'success': False,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # tweet_id = request.query_params['tweet_id']
+        # comments = Comment.objects.filter(tweet_id=tweet_id).order_by('created_at')
+
+        # 使用 django-filter
+        queryset = self.get_queryset()  # 取到被 filter 后的 queryset
+        comments = self.filter_queryset(queryset=queryset)\
+            .prefetch_related('user')\
+            .order_by('created_at')
+        serializer = CommentSerializer(instance=comments, many=True)
+
+        return Response({
+            'comments': serializer.data,
+        }, status=status.HTTP_200_OK)
 
     def create(self, request: Request):
         """
