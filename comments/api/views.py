@@ -10,6 +10,7 @@ from comments.api.serializers import (
     CommentSerializer,
 )
 from comments.models import Comment
+from utils.decorators import required_params
 
 
 class CommentViewSet(viewsets.GenericViewSet):
@@ -30,18 +31,13 @@ class CommentViewSet(viewsets.GenericViewSet):
             return [IsAuthenticated(), IsObjectOwner()]
         return [AllowAny()]
 
+    @required_params(request_attr='query_params', params=['tweet_id'])
     def list(self, request: Request):
         """
         重载 list 方法，不列出所有 comments，
         必须要求指定 tweet_id 作为筛选条件，列出某 tweet 下的所有 comments
         GET /api/comments/?tweet_id=xxx
         """
-        if 'tweet_id' not in request.query_params:
-            return Response({
-                'message': 'missing tweet_id in request',
-                'success': False,
-            }, status=status.HTTP_400_BAD_REQUEST)
-
         # tweet_id = request.query_params['tweet_id']
         # comments = Comment.objects.filter(tweet_id=tweet_id).order_by('created_at')
 

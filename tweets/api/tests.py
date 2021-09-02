@@ -8,6 +8,7 @@ from tweets.models import Tweet
 
 TWEET_LIST_API = '/api/tweets/'
 TWEET_CREATE_API = '/api/tweets/'
+TWEET_RETRIEVE_API = '/api/tweets/{}/'
 
 
 class TweetApiTests(TestCase):
@@ -68,3 +69,24 @@ class TweetApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['user']['id'], self.user1.id)
         self.assertEqual(Tweet.objects.count(), tweets_count + 1)
+
+    def test_retrieve(self):
+        # tweet with id=-1 does not exist
+        url = TWEET_RETRIEVE_API.format(-1)
+        response = self.anonymous_client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) # get_object() 没找到对应 pk 的 object 会抛出 404
+
+        # 验证获取某个 tweet 的时候会一起把仅与之相关的 comments 也拿下
+        tweet = self.create_tweet(self.user1)
+        url = TWEET_RETRIEVE_API.format(tweet.id)
+        response = self.anonymous_client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['comments']), 0)
+
+        self.create_comment(self.user2, tweet, 'wow...')
+        self.create_comment(self.user1, tweet, 'hmm...')
+        # 验证不会返回不是当前 tweet 的 comment
+        self.create_comment(self.user1, self.create_tweet(self.user2), '...')
+
+        response = self.anonymous_client.get(url)
+        self.assertEqual(len(response.data['comments']), 2)

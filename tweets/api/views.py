@@ -3,8 +3,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from newsfeeds.services import NewsFeedService
-from tweets.api.serializers import TweetSerializerForCreate, TweetSerializer
+from tweets.api.serializers import (
+    TweetSerializerForCreate,
+    TweetSerializer,
+    TweetSerializerWithComments,
+)
 from tweets.models import Tweet
+from utils.decorators import required_params
 
 
 class TweetViewSet(viewsets.GenericViewSet,
@@ -18,17 +23,16 @@ class TweetViewSet(viewsets.GenericViewSet,
 
     def get_permissions(self):
         # self.action对应具体的带request的方法
-        if self.action == 'list':
+        if self.action in ['list', 'retrieve']:
             return [AllowAny()]
         return [IsAuthenticated()]
 
+    @required_params(request_attr='query_params', params=['user_id'])
     def list(self, request: Request):
         """
+        GET /api/tweets/
         重载 list 方法，不列出所有 tweets，必须要求指定 user_id 作为筛选条件
         """
-        if 'user_id' not in request.query_params:
-            return Response('missing user_id', status=status.HTTP_400_BAD_REQUEST)
-
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id']
         ).order_by('-created_at')
@@ -37,9 +41,20 @@ class TweetViewSet(viewsets.GenericViewSet,
         # 而不能用 list 的格式（约定俗成）
         return Response({'tweets': serializer.data})
 
+    def retrieve(self, request: Request, *args, **kwargs):
+        """
+        GET /api/tweets/<pk>/
+        展示某一条具体的 tweet
+        """
+        tweet = self.get_object()
+        return Response(
+            TweetSerializerWithComments(instance=tweet).data,
+            status=status.HTTP_200_OK,
+        )
 
     def create(self, request: Request):
         """
+        POST /api/tweets/
         重载 create 方法，因为需要默认用当前登录用户作为 tweet.user
         """
         serializer = TweetSerializerForCreate(
