@@ -57,7 +57,7 @@ class CommentViewSet(viewsets.GenericViewSet):
         POST /api/comments/
         """
         data = {
-            'user_id': request.user.id,
+            'user_id': request.user.id,  # 也可以用 context 传入当前登录的用户是谁
             'tweet_id': request.data.get('tweet_id'),
             'content': request.data.get('content'),
         }
