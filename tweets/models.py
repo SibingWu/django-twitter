@@ -1,5 +1,8 @@
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
+
+from likes.models import Like
 from utils.time_helpers import utc_now
 
 
@@ -27,6 +30,18 @@ class Tweet(models.Model):
     # def comments(self):
     #     # return Comment.objects.filter(tweet=self)
     #     return self.comment_set.all()  # 使用 comment_set 反向查询无需import Comment，避免了 recursive import
+
+    @property
+    def like_set(self):
+        """
+        模仿反查机制，返回 tweet 下的所有点赞
+        """
+
+        # 只与当前 model 有关，不传入参数的，需在 models.py 中定义
+        return Like.objects.filter(
+            content_type=ContentType.objects.get_for_model(Tweet),
+            object_id=self.id,
+        ).order_by('-created_at')
 
     def __str__(self):
         # 这里是你执行 print(tweet instance) 的时候会显示的内容
