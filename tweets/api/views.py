@@ -6,7 +6,7 @@ from newsfeeds.services import NewsFeedService
 from tweets.api.serializers import (
     TweetSerializerForCreate,
     TweetSerializer,
-    TweetSerializerWithComments,
+    TweetSerializerForDetail,
 )
 from tweets.models import Tweet
 from utils.decorators import required_params
@@ -36,7 +36,11 @@ class TweetViewSet(viewsets.GenericViewSet,
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id']
         ).order_by('-created_at')
-        serializer = TweetSerializer(instance=tweets, many=True)  # list of dict
+        serializer = TweetSerializer(
+            instance=tweets,
+            context={'request': request},
+            many=True,  # list of dict
+        )
         # 一般来说 json 格式的 response 默认都要用 hash/dict 的格式
         # 而不能用 list 的格式（约定俗成）
         return Response({'tweets': serializer.data})
@@ -48,7 +52,10 @@ class TweetViewSet(viewsets.GenericViewSet,
         """
         tweet = self.get_object()
         return Response(
-            TweetSerializerWithComments(instance=tweet).data,
+            data=TweetSerializerForDetail(
+                instance=tweet,
+                context={'request': request},
+            ).data,
             status=status.HTTP_200_OK,
         )
 
@@ -76,7 +83,12 @@ class TweetViewSet(viewsets.GenericViewSet,
         # news feed流进行fan out
         NewsFeedService.fanout_to_followers(tweet)
 
+        # 使用展示的serializer
+        serializer = TweetSerializer(
+            instance=tweet,
+            context={'request': request},
+        )
         return Response(
-            TweetSerializer(instance=tweet).data,  # 使用展示的serializer
-            status=status.HTTP_201_CREATED
+            serializer.data,
+            status=status.HTTP_201_CREATED,
         )
