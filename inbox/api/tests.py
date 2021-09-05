@@ -8,6 +8,7 @@ LIKE_URL = '/api/likes/'
 NOTIFICATION_URL = '/api/notifications/'
 NOTIFICATION_UNREAD_COUNT_URL = '/api/notifications/unread-count/'
 NOTIFICATION_MARK_ALL_AS_READ_URL = '/api/notifications/mark-all-as-read/'
+NOTIFICATION_UPDATE_URL = '/api/notifications/{}/'
 
 
 class NotificationTests(TestCase):
@@ -132,3 +133,49 @@ class NotificationApiTests(TestCase):
         self.assertEqual(response.data['count'], 1)
         response = self.lisa_client.get(NOTIFICATION_URL, {'unread': False})
         self.assertEqual(response.data['count'], 1)
+
+    def test_update(self):
+        self.emma_client.post(LIKE_URL, {
+            'content_type': 'tweet',
+            'object_id': self.lisa_tweet.id,
+        })
+        comment = self.create_comment(self.lisa, self.lisa_tweet)
+        self.emma_client.post(LIKE_URL, {
+            'content_type': 'comment',
+            'object_id': comment.id,
+        })
+        notification = self.lisa.notifications.first()
+
+        url = NOTIFICATION_UPDATE_URL.format(notification.id)
+
+        # 验证 post 不行，需要用 put
+        response = self.emma_client.post(url, {'unread': False})
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        # 验证不可以被其他人改变 notification 状态
+        response = self.anonymous_client.put(url, {'unread': False})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # 因为 queryset 是按照当前登陆用户来，所以会返回 404 而不是 403
+        response = self.emma_client.put(url, {'unread': False})
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # 成功标记为已读
+        response = self.lisa_client.put(url, {'unread': False})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response = self.lisa_client.get(NOTIFICATION_UNREAD_COUNT_URL)
+        self.assertEqual(response.data['unread_count'], 1)
+
+        # 再标记为未读
+        response = self.lisa_client.put(url, {'unread': True})
+        response = self.lisa_client.get(NOTIFICATION_UNREAD_COUNT_URL)
+        self.assertEqual(response.data['unread_count'], 2)
+
+        # 验证必须带 unread
+        response = self.lisa_client.put(url, {'verb': 'newverb'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 验证不可修改其他的信息
+        response = self.lisa_client.put(url, {'verb': 'newverb', 'unread': False})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        notification.refresh_from_db()  # 重新载入，确保变量 notification 存的是 database 的信息
+        self.assertNotEqual(notification.verb, 'newverb')

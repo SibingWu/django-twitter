@@ -15,7 +15,7 @@ def required_params(method='GET', params=None):
     """
 
     # GET: request.query_params
-    # POST: request.data
+    # 其余 POST/PUT/DELETE/PATCH: request.data
 
     # 从效果上来说，参数中写 params=[] 很多时候也没有太大问题
     # 但是从好的编程习惯上来说，函数的参数列表中的值不能是一个 mutable 的参数
