@@ -5,7 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 
-def required_params(request_attr='query_params', params=None):
+def required_params(method='GET', params=None):
     """
     检查是否有 param 缺失
 
@@ -30,7 +30,12 @@ def required_params(request_attr='query_params', params=None):
 
         @wraps(view_func)
         def _wrapped_view(instance, request: Request, *args, **kwargs):
-            data = getattr(request, request_attr)  # 从 request 中取出 request_attr 中参数
+            # data = getattr(request, request_attr)  # 从 request 中取出 request_attr 中参数
+            if method.lower() == 'get':
+                data = request.query_params
+            else:
+                data = request.data
+
             missing_params = [
                 param
                 for param in params
