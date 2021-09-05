@@ -10,6 +10,7 @@ from comments.api.serializers import (
     CommentSerializer,
 )
 from comments.models import Comment
+from inbox.services import NotificationService
 from utils.decorators import required_params
 
 
@@ -31,7 +32,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             return [IsAuthenticated(), IsObjectOwner()]
         return [AllowAny()]
 
-    @required_params(request_attr='query_params', params=['tweet_id'])
+    @required_params(method='GET', params=['tweet_id'])
     def list(self, request: Request):
         """
         重载 list 方法，不列出所有 comments，
@@ -76,6 +77,10 @@ class CommentViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         comment = serializer.save()
+
+        # send notification
+        NotificationService.send_comment_notification(comment)
+
         return Response(
             data=CommentSerializer(
                 instance=comment,

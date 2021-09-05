@@ -27,7 +27,7 @@ class TweetViewSet(viewsets.GenericViewSet,
             return [AllowAny()]
         return [IsAuthenticated()]
 
-    @required_params(request_attr='query_params', params=['user_id'])
+    @required_params(method='GET', params=['user_id'])
     def list(self, request: Request):
         """
         GET /api/tweets/
