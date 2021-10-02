@@ -11,6 +11,7 @@ from friendships.api.serializers import (
     FollowingSerializer, FriendshipSerializerForCreate,
 )
 from friendships.models import Friendship
+from friendships.services import FriendshipService
 
 
 class FriendshipViewSet(viewsets.GenericViewSet):
@@ -82,6 +83,10 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         serializer.save()
+
+        # friendship 有更新，需要将 cache 中的 key 失效
+        FriendshipService.invalidate_following_cache(from_user_id=request.user.id)
+
         return Response({
             'success': True,
         }, status=status.HTTP_201_CREATED)
@@ -108,6 +113,10 @@ class FriendshipViewSet(viewsets.GenericViewSet):
             from_user_id=request.user.id,
             to_user_id=pk,
         ).delete()
+
+        # friendship 有更新，需要将 cache 中的 key 失效
+        FriendshipService.invalidate_following_cache(from_user_id=request.user.id)
+
         return Response({
             'success': True,
             'deleted': deleted,
