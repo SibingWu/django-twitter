@@ -10,6 +10,7 @@ from tweets.api.serializers import (
 )
 from tweets.models import Tweet
 from utils.decorators import required_params
+from utils.paginations import EndlessPagination
 
 
 class TweetViewSet(viewsets.GenericViewSet,
@@ -20,6 +21,7 @@ class TweetViewSet(viewsets.GenericViewSet,
     """
     queryset = Tweet.objects.all()
     serializer_class = TweetSerializerForCreate
+    pagination_class = EndlessPagination
 
     def get_permissions(self):
         # self.action对应具体的带request的方法
@@ -30,12 +32,13 @@ class TweetViewSet(viewsets.GenericViewSet,
     @required_params(method='GET', params=['user_id'])
     def list(self, request: Request):
         """
-        GET /api/tweets/
+        GET /api/tweets/?user_id=xxx
         重载 list 方法，不列出所有 tweets，必须要求指定 user_id 作为筛选条件
         """
         tweets = Tweet.objects.filter(
             user_id=request.query_params['user_id']
         ).order_by('-created_at')
+        tweets = self.paginate_queryset(tweets)  # 增加翻页
         serializer = TweetSerializer(
             instance=tweets,
             context={'request': request},
@@ -43,7 +46,7 @@ class TweetViewSet(viewsets.GenericViewSet,
         )
         # 一般来说 json 格式的 response 默认都要用 hash/dict 的格式
         # 而不能用 list 的格式（约定俗成）
-        return Response({'tweets': serializer.data})
+        return self.get_paginated_response(data=serializer.data)
 
     def retrieve(self, request: Request, *args, **kwargs):
         """
