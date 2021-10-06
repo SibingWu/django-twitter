@@ -8,7 +8,7 @@ from tweets.models import Tweet
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = UserSerializerForComment()  # 若不加这行，下面 fields 中的 user 会以 id 的形式显示
+    user = UserSerializerForComment(source='cached_user')  # 若不加这行，下面 fields 中的 user 会以 id 的形式显示
     likes_count = serializers.SerializerMethodField()
     has_liked = serializers.SerializerMethodField()
 

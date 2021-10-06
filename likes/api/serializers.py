@@ -2,18 +2,28 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
-from accounts.api.serializers import UserSerializer
+from accounts.api.serializers import UserSerializerForLike
 from comments.models import Comment
 from likes.models import Like
 from tweets.models import Tweet
 
 
 class LikeSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    # source 表示去 model 里取一个函数或属性来作为这个渲染时用的内容
+    user = UserSerializerForLike(source='cached_user')
+    # 法二：
+    # user = serializers.SerializerMethodField()
 
     class Meta:
         model = Like
         fields = ('user', 'created_at',)
+
+    # 法二：
+    # def get_user(self, obj):
+    #     from accounts.services import UserService
+    #     # 不要用 user.id，会实际访问数据库
+    #     user = UserService.get_profile_through_cache(obj.user_id)
+    #     return UserSerializerForLike(instance=user).data
 
 
 class BaseLikeSerializerForCreateAndCancel(serializers.ModelSerializer):

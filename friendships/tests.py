@@ -16,12 +16,15 @@ class FriendshipServiceTests(TestCase):
         user2 = self.create_user('user2')
         for to_user in [user1, user2, self.emma]:
             Friendship.objects.create(from_user=self.lisa, to_user=to_user)
-        FriendshipService.invalidate_following_cache(self.lisa.id)
+        # 此处不是通过 api 调用来 follow，在没有加 listener 的情况下，需要手动 invalidate
+        # 如果加了 listener，这一行就不需要了
+        # FriendshipService.invalidate_following_cache(self.lisa.id)
 
         user_id_set = FriendshipService.get_following_user_id_set(self.lisa.id)
         self.assertSetEqual(user_id_set, {user1.id, user2.id, self.emma.id})
 
         Friendship.objects.filter(from_user=self.lisa, to_user=self.emma).delete()
-        FriendshipService.invalidate_following_cache(self.lisa.id)
+        # 如果加了 listener，这一行就不需要了
+        # FriendshipService.invalidate_following_cache(self.lisa.id)
         user_id_set = FriendshipService.get_following_user_id_set(self.lisa.id)
         self.assertSetEqual(user_id_set, {user1.id, user2.id})

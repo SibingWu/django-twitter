@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from accounts.services import UserService
 from likes.models import Like
 from tweets.constants import TweetPhotoStatus, TWEET_PHOTO_STATUS_CHOICES
 from utils.time_helpers import utc_now
@@ -21,6 +22,10 @@ class Tweet(models.Model):
     class Meta:
         index_together = (('user', 'created_at'),)
         ordering = ('user', '-created_at')
+
+    def __str__(self):
+        # 这里是你执行 print(tweet instance) 的时候会显示的内容
+        return f'{self.created_at} {self.user}: {self.content}'
 
     @property
     def hours_to_now(self):
@@ -44,9 +49,9 @@ class Tweet(models.Model):
             object_id=self.id,
         ).order_by('-created_at')
 
-    def __str__(self):
-        # 这里是你执行 print(tweet instance) 的时候会显示的内容
-        return f'{self.created_at} {self.user}: {self.content}'
+    @property
+    def cached_user(self):
+        return UserService.get_user_through_cache(self.user_id)
 
 
 class TweetPhoto(models.Model):

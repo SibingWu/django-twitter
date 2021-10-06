@@ -1,6 +1,10 @@
 from django.contrib.auth.models import User
 from django.db import models
 
+from django.db.models.signals import pre_delete, post_save
+
+from accounts.listeners import user_changed, profile_changed
+
 
 # Create your models here.
 class UserProfile(models.Model):
@@ -25,10 +29,18 @@ class UserProfile(models.Model):
 # 这种写法实际上是一个利用 Python 的灵活性进行 hack 的方法，
 # 这样会方便我们通过 user 快速访问到对应的 profile 信息。
 def get_profile(user: User):
+    # import 放在函数里面避免循环依赖
+    # 最底层的是 model，
+    # 尽量不要反向依赖于其他 service/viewset/serializers，应该是别人去依赖它
+    from accounts.services import UserService
+
     # 在 instance level 增加 cache
     if hasattr(user, '_cached_user_profile'):
         return getattr(user, '_cached_user_profile')
-    profile, _ = UserProfile.objects.get_or_create(user=user)
+
+    # profile, _ = UserProfile.objects.get_or_create(user=user)
+    profile = UserService.get_profile_through_cache(user.id)
+
     # 使用 user 对象的 _cached_user_profile 属性进行缓存(cache)，
     # 避免多次调用同一个 user 的 profile 时重复的对数据库进行查询
     setattr(user, '_cached_user_profile', profile)
@@ -38,3 +50,11 @@ def get_profile(user: User):
 # 相当于给 User Model 增加了一个 profile 的 property 方法用于快捷访问
 # 整个代码 load 起来时，本函数会生效
 User.profile = property(get_profile)
+
+# hook up with listeners to invalidate cache
+# 添加一个 listener，user / user profile 一有更新（无论是否从 api 调用），立刻触发
+pre_delete.connect(user_changed, sender=User)
+post_save.connect(user_changed, sender=User)
+
+pre_delete.connect(profile_changed, sender=UserProfile)
+post_save.connect(profile_changed, sender=UserProfile)
