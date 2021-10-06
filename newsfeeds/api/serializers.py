@@ -5,8 +5,11 @@ from tweets.api.serializers import TweetSerializer
 
 
 class NewsFeedSerializer(serializers.ModelSerializer):
-    tweet = TweetSerializer()  # 因 TweetSerializer 中需传入 context，故用到 NewsFeedSerializer 的地方也需要传入context
+    # 因 TweetSerializer 中需传入 context，
+    # 故用到 NewsFeedSerializer 的地方也需要传入context
+    tweet = TweetSerializer()
 
     class Meta:
         model = NewsFeed
-        fields = ('id', 'created_at', 'tweet')  # 不需要user，TweetSerializer中包含user
+        # 不需要user，TweetSerializer中包含user
+        fields = ('id', 'created_at', 'tweet')

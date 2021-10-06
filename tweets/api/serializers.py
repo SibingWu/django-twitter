@@ -12,7 +12,7 @@ from tweets.services import TweetService
 
 class TweetSerializer(serializers.ModelSerializer):
     # 会返回具体user被serialize过的信息，若不指定只会返回user_id
-    user = UserSerializerForTweet()
+    user = UserSerializerForTweet(source='cached_user')
     comments_count = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
     has_liked = serializers.SerializerMethodField()

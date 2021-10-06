@@ -12,6 +12,7 @@ FOLLOW_URL = '/api/friendships/{}/follow/'
 class NewsFeedApiTests(TestCase):
 
     def setUp(self):
+        self.clear_cache()
         self.lisa = self.create_user(username='lisa')
         self.lisa_client = APIClient()
         self.lisa_client.force_authenticate(self.lisa)
@@ -100,3 +101,37 @@ class NewsFeedApiTests(TestCase):
         self.assertEqual(response.data['has_next_page'], False)
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['id'], new_newsfeed.id)
+
+    def test_user_cache(self):
+        # newsfeeds -> tweet -> user -> profile
+        # update in profile ---> update in newsfeeds
+
+        # change user profile
+        profile = self.emma.profile
+        profile.nickname = 'emma nickname'
+        profile.save()
+
+        self.assertEqual(self.lisa.username, 'lisa')
+        self.create_newsfeed(self.emma, self.create_tweet(self.lisa))
+        self.create_newsfeed(self.emma, self.create_tweet(self.emma))
+
+        # validate change in newsfeeds
+        response = self.emma_client.get(NEWSFEEDS_URL)
+        results = response.data['results']
+        self.assertEqual(results[0]['tweet']['user']['username'], 'emma')
+        self.assertEqual(results[0]['tweet']['user']['nickname'], 'emma nickname')
+        self.assertEqual(results[1]['tweet']['user']['username'], 'lisa')
+
+        # change user profile
+        self.lisa.username = 'lisa wu'
+        self.lisa.save()
+        # change emma profile again
+        profile.nickname = 'emma nickname2'
+        profile.save()
+
+        # validate change in newsfeeds
+        response = self.emma_client.get(NEWSFEEDS_URL)
+        results = response.data['results']
+        self.assertEqual(results[0]['tweet']['user']['username'], 'emma')
+        self.assertEqual(results[0]['tweet']['user']['nickname'], 'emma nickname2')
+        self.assertEqual(results[1]['tweet']['user']['username'], 'lisa wu')

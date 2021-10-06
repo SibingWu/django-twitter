@@ -85,7 +85,8 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         serializer.save()
 
         # friendship 有更新，需要将 cache 中的 key 失效
-        FriendshipService.invalidate_following_cache(from_user_id=request.user.id)
+        # 已经加了 listener，此处无需手动 invalidate 了
+        # FriendshipService.invalidate_following_cache(from_user_id=request.user.id)
 
         return Response({
             'success': True,
@@ -115,7 +116,8 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         ).delete()
 
         # friendship 有更新，需要将 cache 中的 key 失效
-        FriendshipService.invalidate_following_cache(from_user_id=request.user.id)
+        # 已经加了 listener，此处无需手动 invalidate 了
+        # FriendshipService.invalidate_following_cache(from_user_id=request.user.id)
 
         return Response({
             'success': True,

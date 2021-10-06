@@ -15,6 +15,7 @@ NEWSFEED_LIST_API = '/api/newsfeeds/'
 class CommentApiTests(TestCase):
 
     def setUp(self):
+        self.clear_cache()
         self.lisa = self.create_user('lisa')
         self.lisa_client = APIClient()
         self.lisa_client.force_authenticate(self.lisa)
@@ -42,7 +43,7 @@ class CommentApiTests(TestCase):
         response = self.lisa_client.post(COMMENT_URL, {'content': '1'})
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # 验证content 太长不行
+        # 验证 content 太长不行
         response = self.lisa_client.post(COMMENT_URL, {
             'tweet_id': self.tweet.id,
             'content': '1' * 141,  # max_length=140
@@ -50,7 +51,7 @@ class CommentApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual('content' in response.data['errors'], True)
 
-        # 验证tweet_id 和 content 都带才行
+        # 验证 tweet_id 和 content 都带才行
         response = self.lisa_client.post(COMMENT_URL, {
             'tweet_id': self.tweet.id,
             'content': '1',

@@ -32,7 +32,7 @@ class FollowingUserIdSetMixin:
 class FollowerSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
     # 可以通过 source=xxx 指定去访问每个 model instance 的 xxx field或property
     # 即 model_instance.xxx 来获得数据
-    user = UserSerializerForFriendship(source='from_user')
+    user = UserSerializerForFriendship(source='cached_from_user')
     created_at = serializers.DateTimeField()
     has_followed = serializers.SerializerMethodField()
 
@@ -43,7 +43,7 @@ class FollowerSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
     def get_has_followed(self, obj: Friendship):
         # if self.context['request'].user.is_anonymous:
         #     return False
-        # # <TODO> 这个部分会对每个 object 都去执行一次 SQL 查询，速度会很慢，如何优化呢？
+        # # 这个部分会对每个 object 都去执行一次 SQL 查询，速度会很慢，如何优化呢？
         # # 我们将在后序优化中会用 cache 解决这个问题
         # return FriendshipService.has_followed(
         #     from_user=self.context['request'].user,
@@ -55,7 +55,7 @@ class FollowerSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
 
 
 class FollowingSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
-    user = UserSerializerForFriendship(source='to_user')
+    user = UserSerializerForFriendship(source='cached_to_user')
     created_at = serializers.DateTimeField()
     has_followed = serializers.SerializerMethodField()
 
@@ -66,7 +66,7 @@ class FollowingSerializer(serializers.ModelSerializer, FollowingUserIdSetMixin):
     def get_has_followed(self, obj: Friendship):
         # if self.context['request'].user.is_anonymous:
         #     return False
-        # # <TODO> 这个部分会对每个 object 都去执行一次 SQL 查询，速度会很慢，如何优化呢？
+        # # 这个部分会对每个 object 都去执行一次 SQL 查询，速度会很慢，如何优化呢？
         # # 我们将在后序优化中会用 cache 解决这个问题
         # return FriendshipService.has_followed(
         #     from_user=self.context['request'].user,
