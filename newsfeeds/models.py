@@ -4,6 +4,9 @@ from tweets.models import Tweet
 
 
 # Create your models here.
+from utils.memcached_helper import MemcachedHelper
+
+
 class NewsFeed(models.Model):
     # 此处 user 不是存储谁发了这条 tweet，而是谁可以看到这条 tweet
     user = models.ForeignKey(
@@ -25,3 +28,7 @@ class NewsFeed(models.Model):
 
     def __str__(self):
         return f'{self.created_at} inbox of {self.user}: {self.tweet}'
+
+    @property
+    def cached_tweet(self):
+        return MemcachedHelper.get_object_through_cache(Tweet, self.tweet_id)
