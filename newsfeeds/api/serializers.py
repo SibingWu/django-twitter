@@ -7,7 +7,7 @@ from tweets.api.serializers import TweetSerializer
 class NewsFeedSerializer(serializers.ModelSerializer):
     # 因 TweetSerializer 中需传入 context，
     # 故用到 NewsFeedSerializer 的地方也需要传入context
-    tweet = TweetSerializer()
+    tweet = TweetSerializer(source='cached_tweet')
 
     class Meta:
         model = NewsFeed

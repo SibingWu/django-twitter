@@ -3,11 +3,10 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
+from utils.memcached_helper import MemcachedHelper
+
 
 # Create your models here.
-from accounts.services import UserService
-
-
 class Like(models.Model):
     """
     可以点赞一个 tweet，也可以点赞一个 comment
@@ -48,4 +47,4 @@ class Like(models.Model):
 
     @property
     def cached_user(self):
-        return UserService.get_user_through_cache(self.user_id)
+        return MemcachedHelper.get_object_through_cache(User, self.user_id)

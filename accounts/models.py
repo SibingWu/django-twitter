@@ -3,7 +3,8 @@ from django.db import models
 
 from django.db.models.signals import pre_delete, post_save
 
-from accounts.listeners import user_changed, profile_changed
+from accounts.listeners import profile_changed
+from utils.listeners import invalidate_object_cache
 
 
 # Create your models here.
@@ -53,8 +54,8 @@ User.profile = property(get_profile)
 
 # hook up with listeners to invalidate cache
 # 添加一个 listener，user / user profile 一有更新（无论是否从 api 调用），立刻触发
-pre_delete.connect(user_changed, sender=User)
-post_save.connect(user_changed, sender=User)
+pre_delete.connect(invalidate_object_cache, sender=User)
+post_save.connect(invalidate_object_cache, sender=User)
 
 pre_delete.connect(profile_changed, sender=UserProfile)
 post_save.connect(profile_changed, sender=UserProfile)
