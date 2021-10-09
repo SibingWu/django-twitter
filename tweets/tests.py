@@ -3,6 +3,8 @@ from datetime import timedelta
 from testing.testcases import TestCase
 from tweets.constants import TweetPhotoStatus
 from tweets.models import TweetPhoto
+from tweets.services import TweetService
+from twitter.cache import USER_TWEETS_PATTERN
 from utils.redis_client import RedisClient
 from utils.redis_serializers import DjangoModelSerializer
 from utils.time_helpers import utc_now
@@ -58,3 +60,48 @@ class TweetTests(TestCase):
         data = conn.get(f'tweet:{tweet.id}')
         cached_tweet = DjangoModelSerializer.deserialize(data)
         self.assertEqual(tweet, cached_tweet)  # 发现是两个 ORM model，会比较内容
+
+
+class TweetServiceTests(TestCase):
+
+    def setUp(self):
+        self.clear_cache()
+        self.lisa = self.create_user('lisa')
+
+    def test_get_user_tweets(self):
+        tweet_ids = []
+        for i in range(3):
+            tweet = self.create_tweet(self.lisa, 'tweet {}'.format(i))
+            tweet_ids.append(tweet.id)
+        tweet_ids = tweet_ids[::-1]
+
+        RedisClient.clear()
+        conn = RedisClient.get_connection()
+
+        # cache miss
+        tweets = TweetService.get_cached_tweets(self.lisa.id)
+        self.assertEqual([t.id for t in tweets], tweet_ids)
+
+        # cache hit
+        tweets = TweetService.get_cached_tweets(self.lisa.id)
+        self.assertEqual([t.id for t in tweets], tweet_ids)
+
+        # cache updated
+        new_tweet = self.create_tweet(self.lisa, 'new tweet')
+        tweets = TweetService.get_cached_tweets(self.lisa.id)
+        tweet_ids.insert(0, new_tweet.id)
+        self.assertEqual([t.id for t in tweets], tweet_ids)
+
+    def test_create_new_tweet_before_get_cached_tweets(self):
+        tweet1 = self.create_tweet(self.lisa, 'tweet1')
+
+        RedisClient.clear()
+        conn = RedisClient.get_connection()
+
+        key = USER_TWEETS_PATTERN.format(user_id=self.lisa.id)
+        self.assertEqual(conn.exists(key), False)
+        tweet2 = self.create_tweet(self.lisa, 'tweet2')
+        self.assertEqual(conn.exists(key), True)
+
+        tweets = TweetService.get_cached_tweets(self.lisa.id)
+        self.assertEqual([t.id for t in tweets], [tweet2.id, tweet1.id])
