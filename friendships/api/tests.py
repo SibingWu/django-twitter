@@ -178,7 +178,7 @@ class FriendshipApiTests(TestCase):
             has_followed = (result['user']['id'] % 2 == 0)
             self.assertEqual(result['has_followed'], has_followed)
 
-        # linghu has followed all his following users
+        # lisa has followed all her following users
         response = self.lisa_client.get(url, {'page': 1})
         for result in response.data['results']:
             self.assertEqual(result['has_followed'], True)

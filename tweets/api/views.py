@@ -9,6 +9,7 @@ from tweets.api.serializers import (
     TweetSerializerForDetail,
 )
 from tweets.models import Tweet
+from tweets.services import TweetService
 from utils.decorators import required_params
 from utils.paginations import EndlessPagination
 
@@ -33,9 +34,13 @@ class TweetViewSet(viewsets.GenericViewSet):
         GET /api/tweets/?user_id=xxx
         重载 list 方法，不列出所有 tweets，必须要求指定 user_id 作为筛选条件
         """
-        tweets = Tweet.objects.filter(
-            user_id=request.query_params['user_id']
-        ).order_by('-created_at')
+
+        # tweets = Tweet.objects.filter(
+        #     user_id=request.query_params['user_id']
+        # ).order_by('-created_at')
+        tweets = TweetService.get_cached_tweets(
+            user_id=request.query_params['user_id'],
+        )
         tweets = self.paginate_queryset(tweets)  # 增加翻页
         serializer = TweetSerializer(
             instance=tweets,
