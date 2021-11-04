@@ -238,3 +238,43 @@ class LikeApiTests(TestCase):
         self.assertEqual(tweet.likes_count, 0)
         response = self.emma_client.get(tweet_url)
         self.assertEqual(response.data['likes_count'], 0)
+
+    def test_likes_count_with_cache(self):
+        tweet = self.create_tweet(self.lisa)
+        self.create_newsfeed(self.lisa, tweet)
+        self.create_newsfeed(self.emma, tweet)
+
+        data = {'content_type': 'tweet', 'object_id': tweet.id}
+        tweet_url = TWEET_DETAIL_API.format(tweet.id)
+        for i in range(3):
+            _, client = self.create_user_and_client('someone{}'.format(i))
+            client.post(LIKE_BASE_URL, data)
+            # check tweet api
+            response = client.get(tweet_url)
+            self.assertEqual(response.data['likes_count'], i + 1)
+            tweet.refresh_from_db()
+            self.assertEqual(tweet.likes_count, i + 1)
+
+        self.emma_client.post(LIKE_BASE_URL, data)
+        response = self.emma_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 4)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 4)
+
+        # check newsfeed api
+        newsfeed_url = '/api/newsfeeds/'
+        response = self.lisa_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 4)
+        response = self.emma_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 4)
+
+        # emma canceled likes
+        self.emma_client.post(LIKE_BASE_URL + 'cancel/', data)
+        tweet.refresh_from_db()
+        self.assertEqual(tweet.likes_count, 3)
+        response = self.emma_client.get(tweet_url)
+        self.assertEqual(response.data['likes_count'], 3)
+        response = self.lisa_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 3)
+        response = self.emma_client.get(newsfeed_url)
+        self.assertEqual(response.data['results'][0]['tweet']['likes_count'], 3)
