@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
+from ratelimit.decorators import ratelimit
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework import permissions
@@ -34,6 +36,7 @@ class AccountViewSet(viewsets.ViewSet):
     serializer_class = SignupSerializer
 
     @action(methods=['GET'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='GET', block=True))
     def login_status(self, request):
         """
         查看用户当前的登录状态和具体信息
@@ -47,6 +50,7 @@ class AccountViewSet(viewsets.ViewSet):
         return Response(data)
 
     @action(methods=['POST'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='POST', block=True))
     def login(self, request):
         """
         使用 username, password 进行注册
@@ -91,6 +95,7 @@ class AccountViewSet(viewsets.ViewSet):
 
 
     @action(methods=['POST'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='POST', block=True))
     def logout(self, request):
         """
         登出当前用户
@@ -99,6 +104,7 @@ class AccountViewSet(viewsets.ViewSet):
         return Response({'success': True})
 
     @action(methods=['POST'], detail=False)
+    @method_decorator(ratelimit(key='ip', rate='3/s', method='POST', block=True))
     def signup(self, request):
         """
         使用 username, email, password 进行注册

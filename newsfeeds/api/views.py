@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from ratelimit.decorators import ratelimit
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -16,6 +18,7 @@ class NewsFeedViewSet(viewsets.GenericViewSet):
         # 只能看 user=当前登录用户的 newsfeed
         return NewsFeed.objects.filter(user_id=self.request.user.id)
 
+    @method_decorator(ratelimit(key='user', rate='5/s', method='GET', block=True))
     def list(self, request: Request):
         """
         GET /api/newsfeeds/
