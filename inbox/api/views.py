@@ -1,4 +1,6 @@
+from django.utils.decorators import method_decorator
 from notifications.models import Notification
+from ratelimit.decorators import ratelimit
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -25,6 +27,7 @@ class NotificationViewSet(viewsets.GenericViewSet,
         return Notification.objects.filter(recipient=self.request.user).all()
 
     @action(methods=['GET'], detail=False, url_path='unread-count')
+    @method_decorator(ratelimit(key='user', rate='3/s', method='GET', block=True))
     def unread_count(self, request: Request):
         """
         GET /api/notifications/unread-count/
@@ -35,6 +38,7 @@ class NotificationViewSet(viewsets.GenericViewSet,
         }, status=status.HTTP_200_OK)
 
     @action(methods=['POST'], detail=False, url_path='mark-all-as-read')
+    @method_decorator(ratelimit(key='user', rate='3/s', method='POST', block=True))
     def mark_all_as_read(self, request: Request):
         """
         POST /api/notifications/mark-all-as-read/
@@ -45,6 +49,7 @@ class NotificationViewSet(viewsets.GenericViewSet,
         }, status=status.HTTP_200_OK)
 
     @required_params(method='PUT', params=['unread'])
+    @method_decorator(ratelimit(key='user', rate='3/s', method='POST', block=True))
     def update(self, request: Request, *args, **kwargs):
         """
         PUT /api/notifications/<pk>/

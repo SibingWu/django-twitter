@@ -1,3 +1,5 @@
+from django.utils.decorators import method_decorator
+from ratelimit.decorators import ratelimit
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
@@ -33,6 +35,7 @@ class CommentViewSet(viewsets.GenericViewSet):
         return [AllowAny()]
 
     @required_params(method='GET', params=['tweet_id'])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='GET', block=True))
     def list(self, request: Request):
         """
         重载 list 方法，不列出所有 comments，
@@ -57,6 +60,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             'comments': serializer.data,
         }, status=status.HTTP_200_OK)
 
+    @method_decorator(ratelimit(key='user', rate='3/s', method='POST', block=True))
     def create(self, request: Request):
         """
         POST /api/comments/
@@ -89,6 +93,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @method_decorator(ratelimit(key='user', rate='3/s', method='POST', block=True))
     def update(self, request: Request, *args, **kwargs):
         """
         PUT /api/comments/<pk>/
@@ -124,6 +129,7 @@ class CommentViewSet(viewsets.GenericViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @method_decorator(ratelimit(key='user', rate='5/s', method='POST', block=True))
     def destroy(self, request: Request, *args, **kwargs):
         """
         DELETE /api/comments/<pk>/

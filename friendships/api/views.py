@@ -1,4 +1,6 @@
 from django.contrib.auth.models import User
+from django.utils.decorators import method_decorator
+from ratelimit.decorators import ratelimit
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -21,6 +23,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
     pagination_class = FriendshipPagination
 
     @action(methods=['GET'], detail=True, permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
     def followers(self, request: Request, pk):
         """
         GET /api/friendships/<pk>/followers/ 返回 user_id=<pk> 的用户的所有粉丝
@@ -36,6 +39,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         return self.get_paginated_response(data=serializer.data)
 
     @action(methods=['GET'], detail=True, permission_classes=[AllowAny])
+    @method_decorator(ratelimit(key='user_or_ip', rate='3/s', method='GET', block=True))
     def followings(self, request: Request, pk):
         """
         GET /api/friendships/<pk>/followings/ 返回 user_id=<pk> 的用户关注的所有用户
@@ -51,6 +55,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         return self.get_paginated_response(data=serializer.data)
 
     @action(methods=['POST'], detail=True, permission_classes=[IsAuthenticated])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def follow(self, request: Request, pk):
         """
         POST /api/friendships/<pk>/follow/ 当前用户去关注 user_id=<pk> 的用户
@@ -92,6 +97,7 @@ class FriendshipViewSet(viewsets.GenericViewSet):
         }, status=status.HTTP_201_CREATED)
 
     @action(methods=['POST'], detail=True, permission_classes=[IsAuthenticated])
+    @method_decorator(ratelimit(key='user', rate='10/s', method='POST', block=True))
     def unfollow(self, request: Request, pk):
         """
         POST /api/friendships/<pk>/unfollow/ 当前用户去取关 user_id=<pk> 的用户
