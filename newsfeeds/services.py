@@ -1,5 +1,5 @@
-from friendships.services import FriendshipService
 from newsfeeds.models import NewsFeed
+from newsfeeds.tasks import fanout_newsfeeds_task
 from twitter.cache import USER_NEWSFEEDS_PATTERN
 from utils.redis_helper import RedisHelper
 
@@ -8,29 +8,20 @@ class NewsFeedService:
 
     @classmethod
     def fanout_to_followers(cls, tweet):
-        # 获取当前发帖人的所有粉丝
-        newsfeeds = [
-            NewsFeed(user=follower, tweet=tweet)
-            for follower in FriendshipService.get_followers(tweet.user)
-        ]
-        newsfeeds.append(NewsFeed(user=tweet.user, tweet=tweet))  # 自己也能看自己发的帖子
-
-        # 一次性写入
-        NewsFeed.objects.bulk_create(objs=newsfeeds)
-
-        # bulk create 不会触发 post_save 的 signal，所以需要手动 push 到 cache 里
-        # post_save 的 signal 只会单个触发，不会批量触发，所以得手动写触发机制
-        for newsfeed in newsfeeds:
-            cls.push_newsfeed_to_cache(newsfeed)
-
-        # 其实若是一个 1kw 粉丝的博主发了一个 144字节的 tweet，
-        # 如果把整个 tweet 去 fan out 到 1kw 粉丝中，会给 redis 的内存带来 1G 的耗费
-        # 可进一步优化：在 newsfeed cache 中，不直接存储整个 tweet，而是只存 tweet id
-        # 即不是把整个 newsfeed push 进 cache，而是只是 push 有哪些 id
-        # 但这里可以不优化的原因：newsfeed 在 serialize 时，
-        # 只有 user_id，tweet_id，和 created_at，并没有整条 tweet
-
-        # 本质优化方法：对于明星用户，不要用 push model，而要用 pull model
+        # 这句话的作用是，在 celery 配置的 message queue 中创建一个 fanout 的任务
+        # 参数是 tweet。任意一个在监听 message queue 的 worker 进程都有机会拿到这个任务
+        # worker 进程中会执行 fanout_newsfeeds_task 里的代码来实现一个异步的任务处理
+        # 如果这个任务需要处理 10s 则这 10s 会花费在 worker 进程上，
+        # 而不是花费在用户发 tweet 的过程中。
+        # 所以这里 .delay 操作会马上执行马上结束从而不影响用户的正常操作。
+        # （因为这里只是创建了一个任务，把任务信息放在了 message queue 里，并没有真正执行这个函数）
+        # 要注意的是，delay 里的参数必须是可以被 celery serialize 的值，
+        # 因为 worker 进程是一个独立的进程，甚至在不同的机器上，
+        # 没有办法知道当前 web 进程的某片内存空间里的值是什么。
+        # 所以我们只能把 tweet.id 作为参数传进去，而不能把 tweet 传进去。
+        # 因为 celery 并不知道如何 serialize Tweet。
+        fanout_newsfeeds_task.delay(tweet.id) # delay() 表示异步任务
+        # fanout_newsfeeds_task(tweet.id) # 同步任务
 
     @classmethod
     def get_cached_newsfeeds(cls, user_id):
