@@ -22,6 +22,11 @@ class FriendshipService:
         return followers
 
     @classmethod
+    def get_follower_ids(cls, to_user_id):
+        friendships = Friendship.objects.filter(to_user_id=to_user_id)
+        return [friendship.from_user_id for friendship in friendships]
+
+    @classmethod
     def get_following_user_id_set(cls, from_user_id):
         """
         通过一次的数据库访问将当前登录用户的 following user id 存进 memcached 的 cache 中

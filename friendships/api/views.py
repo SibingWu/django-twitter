@@ -11,7 +11,6 @@ from friendships.api.serializers import (
     FollowingSerializer, FriendshipSerializerForCreate,
 )
 from friendships.models import Friendship
-from friendships.services import FriendshipService
 
 
 class FriendshipViewSet(viewsets.GenericViewSet):
