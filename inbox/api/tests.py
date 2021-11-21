@@ -14,7 +14,7 @@ NOTIFICATION_UPDATE_URL = '/api/notifications/{}/'
 class NotificationTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(NotificationTests, self).setUp()
         self.lisa, self.lisa_client = self.create_user_and_client('lisa')
         self.emma, self.emma_client = self.create_user_and_client('emma')
         self.emma_tweet = self.create_tweet(self.emma)

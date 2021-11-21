@@ -15,7 +15,7 @@ FOLLOW_URL = '/api/friendships/{}/follow/'
 class NewsFeedApiTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(NewsFeedApiTests, self).setUp()
         self.lisa = self.create_user(username='lisa')
         self.lisa_client = APIClient()
         self.lisa_client.force_authenticate(self.lisa)
@@ -183,7 +183,7 @@ class NewsFeedApiTests(TestCase):
             tweet = self.create_tweet(user=users[i % 5], content='feed{}'.format(i))
             feed = self.create_newsfeed(self.lisa, tweet)
             newsfeeds.append(feed)
-        newsfeeds = newsfeeds[::-1] # 真实的 newsfeed 会倒过来
+        newsfeeds = newsfeeds[::-1]  # 真实的 newsfeed 会倒过来
 
         # only cached list_limit objects
         cached_newsfeeds = NewsFeedService.get_cached_newsfeeds(self.lisa.id)

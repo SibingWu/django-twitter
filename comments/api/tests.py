@@ -15,7 +15,7 @@ NEWSFEED_LIST_API = '/api/newsfeeds/'
 class CommentApiTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(CommentApiTests, self).setUp()
         self.lisa = self.create_user('lisa')
         self.lisa_client = APIClient()
         self.lisa_client.force_authenticate(self.lisa)

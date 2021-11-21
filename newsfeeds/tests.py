@@ -11,7 +11,7 @@ from utils.redis_client import RedisClient
 class NewsFeedServiceTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(NewsFeedServiceTests, self).setUp()
         self.lisa = self.create_user('lisa')
         self.emma = self.create_user('emma')
 
@@ -56,7 +56,7 @@ class NewsFeedServiceTests(TestCase):
 class NewsFeedTaskTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(NewsFeedTaskTests, self).setUp()
         self.lisa = self.create_user('lisa')
         self.emma = self.create_user('emma')
 

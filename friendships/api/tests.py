@@ -1,9 +1,10 @@
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from friendships.api.paginations import FriendshipPagination
-from friendships.models import Friendship
+from friendships.services import FriendshipService
+from gatekeeper.models import GateKeeper
 from testing.testcases import TestCase
+from utils.paginations import EndlessPagination
 
 FOLLOW_URL = '/api/friendships/{}/follow/'
 UNFOLLOW_URL = '/api/friendships/{}/unfollow/'
@@ -14,7 +15,7 @@ FOLLOWINGS_URL = '/api/friendships/{}/followings/'
 class FriendshipApiTests(TestCase):
 
     def setUp(self):
-        self.clear_cache()
+        super(FriendshipApiTests, self).setUp()
         self.lisa = self.create_user(username='lisa')
         self.lisa_client = APIClient()
         self.lisa_client.force_authenticate(self.lisa)
@@ -26,12 +27,12 @@ class FriendshipApiTests(TestCase):
         # create followings and followers for emma
         for i in range(2):
             follower = self.create_user('emma_follower{}'.format(i))
-            Friendship.objects.create(from_user=follower, to_user=self.emma)
+            self.create_friendship(from_user=follower, to_user=self.emma)
         for i in range(3):
             following = self.create_user('emma_following{}'.format(i))
-            Friendship.objects.create(from_user=self.emma, to_user=following)
+            self.create_friendship(from_user=self.emma, to_user=following)
 
-    def test_follow(self):
+    def _test_follow(self):
         url = FOLLOW_URL.format(self.lisa.id)
 
         # 验证需要登录才能 follow 别人
@@ -51,10 +52,10 @@ class FriendshipApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['duplicate'], True)
         # 验证反向关注会创建新的数据
-        count = Friendship.objects.count()
+        before_count = FriendshipService.get_following_count(self.lisa.id)
         response = self.lisa_client.post(FOLLOW_URL.format(self.emma.id))
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Friendship.objects.count(), count + 1)
+        after_count = FriendshipService.get_following_count(self.lisa.id)
+        self.assertEqual(after_count, before_count + 1)
 
     def test_unfollow(self):
         url = UNFOLLOW_URL.format(self.lisa.id)
@@ -68,19 +69,23 @@ class FriendshipApiTests(TestCase):
         # 验证不能用 unfollow 自己
         response = self.lisa_client.post(url)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
         # unfollow 成功
-        Friendship.objects.create(from_user=self.emma, to_user=self.lisa)
-        count = Friendship.objects.count()
+        self.create_friendship(from_user=self.emma, to_user=self.lisa)
+        before_count = FriendshipService.get_following_count(self.emma.id)
         response = self.emma_client.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['deleted'], 1)
-        self.assertEqual(Friendship.objects.count(), count - 1)
+        after_count = FriendshipService.get_following_count(self.emma.id)
+        self.assertEqual(after_count, before_count - 1)
+
         # 验证未 follow 的情况下 unfollow 静默处理
-        count = Friendship.objects.count()
+        before_count = FriendshipService.get_following_count(self.emma.id)
         response = self.emma_client.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['deleted'], 0)  # 未删掉任何数据
-        self.assertEqual(Friendship.objects.count(), count)
+        after_count = FriendshipService.get_following_count(self.emma.id)
+        self.assertEqual(before_count, after_count)
 
     def test_followings(self):
         url = FOLLOWINGS_URL.format(self.emma.id)
@@ -133,92 +138,92 @@ class FriendshipApiTests(TestCase):
         )
 
     def test_followers_pagination(self):
-        max_page_size = FriendshipPagination.max_page_size
-        page_size = FriendshipPagination.page_size
+        page_size = EndlessPagination.page_size
+        friendships = []
         for i in range(page_size * 2):
             follower = self.create_user('lisa_follower{}'.format(i))
-            Friendship.objects.create(from_user=follower, to_user=self.lisa)
+            friendship = self.create_friendship(from_user=follower, to_user=self.lisa)
+            friendships.append(friendship)
             if follower.id % 2 == 0:
-                Friendship.objects.create(from_user=self.emma, to_user=follower)
+                self.create_friendship(from_user=self.emma, to_user=follower)
 
         url = FOLLOWERS_URL.format(self.lisa.id)
-        self._test_friendship_pagination(url, page_size, max_page_size)
+        self._paginate_until_the_end(url, 2, friendships)
 
         # anonymous hasn't followed any users
-        response = self.anonymous_client.get(url, {'page': 1})
+        response = self.anonymous_client.get(url)
         for result in response.data['results']:
             self.assertEqual(result['has_followed'], False)
 
         # emma has followed users with even id
-        response = self.emma_client.get(url, {'page': 1})
+        response = self.emma_client.get(url)
         for result in response.data['results']:
             has_followed = (result['user']['id'] % 2 == 0)
             self.assertEqual(result['has_followed'], has_followed)
 
     def test_followings_pagination(self):
-        max_page_size = FriendshipPagination.max_page_size
-        page_size = FriendshipPagination.page_size
+        page_size = EndlessPagination.page_size
+        friendships = []
         for i in range(page_size * 2):
             following = self.create_user('lisa_following{}'.format(i))
-            Friendship.objects.create(from_user=self.lisa, to_user=following)
+            friendship = self.create_friendship(from_user=self.lisa, to_user=following)
+            friendships.append(friendship)
             if following.id % 2 == 0:
-                Friendship.objects.create(from_user=self.emma, to_user=following)
+                self.create_friendship(from_user=self.emma, to_user=following)
 
         url = FOLLOWINGS_URL.format(self.lisa.id)
-        self._test_friendship_pagination(url, page_size, max_page_size)
+        self._paginate_until_the_end(url, 2, friendships)
 
         # anonymous hasn't followed any users
-        response = self.anonymous_client.get(url, {'page': 1})
+        response = self.anonymous_client.get(url)
         for result in response.data['results']:
             self.assertEqual(result['has_followed'], False)
 
         # emma has followed users with even id
-        response = self.emma_client.get(url, {'page': 1})
+        response = self.emma_client.get(url)
         for result in response.data['results']:
             has_followed = (result['user']['id'] % 2 == 0)
             self.assertEqual(result['has_followed'], has_followed)
 
         # lisa has followed all her following users
-        response = self.lisa_client.get(url, {'page': 1})
+        response = self.lisa_client.get(url)
         for result in response.data['results']:
             self.assertEqual(result['has_followed'], True)
 
-    def _test_friendship_pagination(self, url, page_size, max_page_size):
-        response = self.anonymous_client.get(url, {'page': 1})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), page_size)
-        self.assertEqual(response.data['total_pages'], 2)
-        self.assertEqual(response.data['total_results'], page_size * 2)
-        self.assertEqual(response.data['page_number'], 1)
-        self.assertEqual(response.data['has_next_page'], True)
+        # test pull new friendships
+        last_created_at = friendships[-1].created_at
+        response = self.lisa_client.get(url, {'created_at__gt': last_created_at})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['results']), 0)
 
-        response = self.anonymous_client.get(url, {'page': 2})
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), page_size)
-        self.assertEqual(response.data['total_pages'], 2)
-        self.assertEqual(response.data['total_results'], page_size * 2)
-        self.assertEqual(response.data['page_number'], 2)
-        self.assertEqual(response.data['has_next_page'], False)
+        new_friends = [self.create_user('big_v{}'.format(i)) for i in range(3)]
+        new_friendships = []
+        for friend in new_friends:
+            new_friendships.append(self.create_friendship(from_user=self.lisa, to_user=friend))
+        response = self.lisa_client.get(url, {'created_at__gt': last_created_at})
+        self.assertEqual(len(response.data['results']), 3)
+        for result, friendship in zip(response.data['results'], reversed(new_friendships)):
+            self.assertEqual(result['created_at'], friendship.created_at)
 
-        # validate that there is no 3rd page
-        response = self.anonymous_client.get(url, {'page': 3})
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    def _paginate_until_the_end(self, url, expect_pages, friendships):
+        results, pages = [], 0
+        # 默认的第一页
+        response = self.anonymous_client.get(url)
+        results.extend(response.data['results'])
 
-        # test user can not customize page_size exceeds max_page_size
-        response = self.anonymous_client.get(
-            url,
-            {'page': 1, 'size': max_page_size + 1}
-        )
-        self.assertEqual(len(response.data['results']), max_page_size)
-        self.assertEqual(response.data['total_pages'], 2)
-        self.assertEqual(response.data['total_results'], page_size * 2)
-        self.assertEqual(response.data['page_number'], 1)
-        self.assertEqual(response.data['has_next_page'], True)
+        pages += 1
+        while response.data['has_next_page']:
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            # 根据前一页的最后一个 item 的 created_at 作为下一页的范围
+            last_item = response.data['results'][-1]
+            response = self.anonymous_client.get(url, {
+                'created_at__lt': last_item['created_at'],
+            })
+            results.extend(response.data['results'])
+            pages += 1
 
-        # test user can customize page size by param size
-        response = self.anonymous_client.get(url, {'page': 1, 'size': 2})
-        self.assertEqual(len(response.data['results']), 2)
-        self.assertEqual(response.data['total_pages'], page_size)
-        self.assertEqual(response.data['total_results'], page_size * 2)
-        self.assertEqual(response.data['page_number'], 1)
-        self.assertEqual(response.data['has_next_page'], True)
+        self.assertEqual(len(results), len(friendships))
+        self.assertEqual(pages, expect_pages)
+        # friendship is in ascending order, results is in descending order
+        for result, friendship in zip(results, friendships[::-1]):
+            self.assertEqual(result['created_at'], friendship.created_at)
