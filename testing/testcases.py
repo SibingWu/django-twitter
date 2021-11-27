@@ -9,7 +9,7 @@ from django_hbase.models import HBaseModel
 from friendships.services import FriendshipService
 from gatekeeper.models import GateKeeper
 from likes.models import Like
-from newsfeeds.models import NewsFeed
+from newsfeeds.services import NewsFeedService
 from tweets.models import Tweet
 from utils.redis_client import RedisClient
 
@@ -38,7 +38,8 @@ class TestCase(DjangoTestCase):
         caches['testing'].clear()
         # open the switch for hbase
         # 测试时手动 comment / uncomment
-        # GateKeeper.set_kv('switch_friendship_to_hbase', 'percent', 100)
+        GateKeeper.turn_on('switch_newsfeed_to_hbase')
+        GateKeeper.turn_on('switch_friendship_to_hbase')
 
     @property
     def anonymous_client(self):
@@ -70,7 +71,11 @@ class TestCase(DjangoTestCase):
         return Tweet.objects.create(user=user, content=content)
 
     def create_newsfeed(self, user, tweet):
-        return NewsFeed.objects.create(user=user, tweet=tweet)
+        if GateKeeper.is_switch_on('switch_newsfeed_to_hbase'):
+            created_at = tweet.timestamp
+        else:
+            created_at = tweet.created_at
+        return NewsFeedService.create(user_id=user.id, tweet_id=tweet.id, created_at=created_at)
 
     def create_comment(self, user, tweet, content=None):
         if content is None:
@@ -78,7 +83,7 @@ class TestCase(DjangoTestCase):
         return Comment.objects.create(user=user, tweet=tweet, content=content)
 
     def create_like(self, user, target):
-        instance, _ = Like.objects.get_or_create( # 只能点一次赞
+        instance, _ = Like.objects.get_or_create(  # 只能点一次赞
             # target can be comment or tweet
             # 通过 model 的名字，找到 model 对应的 ContentType 的 object
             content_type=ContentType.objects.get_for_model(target.__class__),

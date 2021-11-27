@@ -4,12 +4,18 @@ from newsfeeds.models import NewsFeed
 from tweets.api.serializers import TweetSerializer
 
 
-class NewsFeedSerializer(serializers.ModelSerializer):
-    # 因 TweetSerializer 中需传入 context，
-    # 故用到 NewsFeedSerializer 的地方也需要传入context
-    tweet = TweetSerializer(source='cached_tweet')
+class NewsFeedSerializer(serializers.Serializer):
+    tweet = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
 
-    class Meta:
-        model = NewsFeed
-        # 不需要user，TweetSerializer中包含user
-        fields = ('id', 'created_at', 'tweet')
+    def get_tweet(self, obj: NewsFeed):
+        return TweetSerializer(obj.cached_tweet, context=self.context).data
+
+    def get_created_at(self, obj: NewsFeed):
+        return obj.created_at
+
+    def update(self, instance, validated_data):
+        pass
+
+    def create(self, validated_data):
+        pass
