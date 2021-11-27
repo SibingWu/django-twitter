@@ -30,6 +30,10 @@ class GateKeeper:
         return cls.get(gk_name)['percent'] == 100
 
     @classmethod
+    def turn_on(cls, gk_name):
+        cls.set_kv(gk_name, 'percent', 100)
+
+    @classmethod
     def in_gk(cls, gk_name, user_id):
         # 开放的用户数的百分比
         return user_id % 100 < cls.get(gk_name)['percent']
